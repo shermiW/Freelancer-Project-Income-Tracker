@@ -1,20 +1,34 @@
 const Project = require('../models/Project');
 const Client = require('../models/Client');
 
-// @desc    Get all projects with search, filter & pagination
+// Helper to normalize status string from query parameters
+const normalizeStatus = (statusStr) => {
+  if (!statusStr || statusStr === 'All' || statusStr === 'all') return null;
+  const s = statusStr.toString().trim().toLowerCase();
+  if (['in-progress', 'in_progress', 'in progress', 'inprogress'].includes(s)) {
+    return 'In Progress';
+  }
+  if (s === 'pending') return 'Pending';
+  if (s === 'completed') return 'Completed';
+  if (s === 'paid') return 'Paid';
+  return statusStr;
+};
+
+// @desc    Get all projects with search, filter & query params
 // @route   GET /api/projects
 // @access  Private
-const getProjects = async (req, res) => {
+const getProjects = async (req, res, next) => {
   try {
     const { status, client, search } = req.query;
 
     let query = { user: req.user._id };
 
-    if (status && status !== 'All') {
-      query.status = status;
+    const formattedStatus = normalizeStatus(status);
+    if (formattedStatus) {
+      query.status = formattedStatus;
     }
 
-    if (client && client !== 'All') {
+    if (client && client !== 'All' && client !== 'all') {
       query.client = client;
     }
 
@@ -28,36 +42,41 @@ const getProjects = async (req, res) => {
       projects = projects.filter(
         (p) =>
           p.title.toLowerCase().includes(term) ||
-          (p.client && p.client.name.toLowerCase().includes(term))
+          (p.client && p.client.name && p.client.name.toLowerCase().includes(term))
       );
     }
 
     res.json(projects);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Create project
 // @route   POST /api/projects
 // @access  Private
-const createProject = async (req, res) => {
+const createProject = async (req, res, next) => {
   try {
-    const { title, client, fee, status, description, dueDate, paidDate } = req.body;
+    const { title, client, fee, amountPaid, status, description, dueDate, paidDate } = req.body;
 
-    if (!title || !client || fee === undefined) {
-      return res.status(400).json({ message: 'Title, Client, and Fee are required' });
+    // Verify client belongs to logged in user
+    const clientExists = await Client.findOne({ _id: client, user: req.user._id });
+    if (!clientExists) {
+      return res.status(400).json({ message: 'Selected client not found or not owned by user' });
     }
+
+    const normalizedStat = normalizeStatus(status) || 'Pending';
 
     const project = await Project.create({
       user: req.user._id,
       client,
       title,
       fee: Number(fee),
-      status: status || 'Pending',
+      amountPaid: amountPaid !== undefined ? Number(amountPaid) : 0,
+      status: normalizedStat,
       description: description || '',
       dueDate: dueDate || null,
-      paidDate: status === 'Paid' ? (paidDate || new Date()) : (paidDate || null),
+      paidDate: normalizedStat === 'Paid' ? (paidDate || new Date()) : (paidDate || null),
     });
 
     const populatedProject = await Project.findById(project._id).populate(
@@ -67,14 +86,14 @@ const createProject = async (req, res) => {
 
     res.status(201).json(populatedProject);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Update project
 // @route   PUT /api/projects/:id
 // @access  Private
-const updateProject = async (req, res) => {
+const updateProject = async (req, res, next) => {
   try {
     const project = await Project.findById(req.params.id);
 
@@ -86,27 +105,32 @@ const updateProject = async (req, res) => {
       return res.status(401).json({ message: 'Not authorized to update this project' });
     }
 
+    const updates = { ...req.body };
+    if (updates.status) {
+      updates.status = normalizeStatus(updates.status) || updates.status;
+    }
+
     // Auto set paidDate if status changed to Paid
-    if (req.body.status === 'Paid' && project.status !== 'Paid' && !req.body.paidDate) {
-      req.body.paidDate = new Date();
+    if (updates.status === 'Paid' && project.status !== 'Paid' && !updates.paidDate) {
+      updates.paidDate = new Date();
     }
 
     const updatedProject = await Project.findByIdAndUpdate(
       req.params.id,
-      req.body,
-      { new: true }
+      updates,
+      { new: true, runValidators: true }
     ).populate('client', 'name email company');
 
     res.json(updatedProject);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Delete project
 // @route   DELETE /api/projects/:id
 // @access  Private
-const deleteProject = async (req, res) => {
+const deleteProject = async (req, res, next) => {
   try {
     const project = await Project.findById(req.params.id);
 
@@ -122,21 +146,21 @@ const deleteProject = async (req, res) => {
 
     res.json({ message: 'Project deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Get dashboard metrics & visual stats
-// @route   GET /api/projects/stats
+// @route   GET /api/dashboard/stats or GET /api/projects/stats
 // @access  Private
-const getDashboardStats = async (req, res) => {
+const getDashboardStats = async (req, res, next) => {
   try {
-    const projects = await Project.find({ user: req.user._id }).populate('client', 'name');
+    const projects = await Project.find({ user: req.user._id }).populate('client', 'name company');
     const clientsCount = await Client.countDocuments({ user: req.user._id });
 
     let totalIncome = 0; // Fee of Paid projects
-    let pendingPayments = 0; // Fee of Pending / In Progress / Completed projects
-    let activeProjectsCount = 0; // In Progress + Pending
+    let pendingPayments = 0; // Fee of non-Paid projects
+    let activeProjectsCount = 0; // In Progress + Pending count
 
     const statusCounts = {
       Pending: 0,
@@ -145,11 +169,10 @@ const getDashboardStats = async (req, res) => {
       Paid: 0,
     };
 
-    // Monthly breakdown map (e.g. { "Jan": 1200, "Feb": 3400 })
+    // Monthly aggregation for charts (last 6 months)
     const monthlyIncomeMap = {};
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-    // Initialize last 6 months
     const currentMonth = new Date().getMonth();
     for (let i = 5; i >= 0; i--) {
       const monthIdx = (currentMonth - i + 12) % 12;
@@ -157,14 +180,12 @@ const getDashboardStats = async (req, res) => {
     }
 
     projects.forEach((p) => {
-      // Count statuses
       if (statusCounts[p.status] !== undefined) {
         statusCounts[p.status] += 1;
       }
 
       if (p.status === 'Paid') {
         totalIncome += p.fee;
-        // Group by month
         const pDate = p.paidDate || p.updatedAt || p.createdAt;
         const monthName = months[new Date(pDate).getMonth()];
         if (monthlyIncomeMap[monthName] !== undefined) {
@@ -194,6 +215,11 @@ const getDashboardStats = async (req, res) => {
     ];
 
     res.json({
+      totalIncome,
+      pendingPayments,
+      activeProjects: activeProjectsCount,
+      totalProjects: projects.length,
+      totalClients: clientsCount,
       summary: {
         totalIncome,
         pendingPayments,
@@ -206,7 +232,7 @@ const getDashboardStats = async (req, res) => {
       recentProjects: projects.slice(0, 5),
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 

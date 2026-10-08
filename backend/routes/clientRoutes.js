@@ -7,10 +7,19 @@ const {
   deleteClient,
 } = require('../controllers/clientController');
 const { protect } = require('../middleware/authMiddleware');
+const {
+  createClientValidation,
+  updateClientValidation,
+} = require('../middleware/validatorMiddleware');
 
 router.use(protect);
 
-router.route('/').get(getClients).post(createClient);
-router.route('/:id').put(updateClient).delete(deleteClient);
+router.route('/')
+  .get(getClients)
+  .post(createClientValidation, createClient);
+
+router.route('/:id')
+  .put(updateClientValidation, updateClient)
+  .delete(deleteClient);
 
 module.exports = router;

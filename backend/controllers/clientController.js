@@ -4,25 +4,21 @@ const Project = require('../models/Project');
 // @desc    Get all clients for logged in user
 // @route   GET /api/clients
 // @access  Private
-const getClients = async (req, res) => {
+const getClients = async (req, res, next) => {
   try {
     const clients = await Client.find({ user: req.user._id }).sort({ createdAt: -1 });
     res.json(clients);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Create new client
 // @route   POST /api/clients
 // @access  Private
-const createClient = async (req, res) => {
+const createClient = async (req, res, next) => {
   try {
     const { name, email, company, phone, status, notes } = req.body;
-
-    if (!name) {
-      return res.status(400).json({ message: 'Client name is required' });
-    }
 
     const client = await Client.create({
       user: req.user._id,
@@ -36,14 +32,14 @@ const createClient = async (req, res) => {
 
     res.status(201).json(client);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Update client
 // @route   PUT /api/clients/:id
 // @access  Private
-const updateClient = async (req, res) => {
+const updateClient = async (req, res, next) => {
   try {
     const client = await Client.findById(req.params.id);
 
@@ -58,19 +54,19 @@ const updateClient = async (req, res) => {
     const updatedClient = await Client.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true }
+      { new: true, runValidators: true }
     );
 
     res.json(updatedClient);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc    Delete client
 // @route   DELETE /api/clients/:id
 // @access  Private
-const deleteClient = async (req, res) => {
+const deleteClient = async (req, res, next) => {
   try {
     const client = await Client.findById(req.params.id);
 
@@ -83,12 +79,11 @@ const deleteClient = async (req, res) => {
     }
 
     await Client.findByIdAndDelete(req.params.id);
-    // Optionally delete or unassign projects associated with client
     await Project.deleteMany({ client: req.params.id });
 
     res.json({ message: 'Client and associated projects removed' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
