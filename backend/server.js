@@ -6,9 +6,7 @@ const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
 dotenv.config();
 
-// Connect to Database
-connectDB();
-
+// Initialize express app
 const app = express();
 
 // Global Middleware
@@ -35,3 +33,5 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
 });
+
+connectDB();

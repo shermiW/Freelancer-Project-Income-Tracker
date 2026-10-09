@@ -2,12 +2,21 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/freelancer_tracker');
+    const conn = await mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/freelancer_tracker', {
+      serverSelectionTimeoutMS: 2000,
+    });
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
-    console.error(`MongoDB Connection Error: ${error.message}`);
-    // If MongoDB is not running locally, provide clear log message but don't crash process instantly in dev
-    console.log('Ensure MongoDB service is running on your machine or update MONGO_URI in .env');
+    console.log(`Local MongoDB connection failed (${error.message}). Initializing MongoMemoryServer...`);
+    try {
+      const { MongoMemoryServer } = require('mongodb-memory-server');
+      const mongoServer = await MongoMemoryServer.create();
+      const uri = mongoServer.getUri();
+      const conn = await mongoose.connect(uri);
+      console.log(`MongoDB Connected via MongoMemoryServer: ${conn.connection.host}`);
+    } catch (memErr) {
+      console.error(`MongoDB Memory Server Error: ${memErr.message}`);
+    }
   }
 };
 
