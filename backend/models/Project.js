@@ -10,7 +10,7 @@ const projectSchema = new mongoose.Schema(
     client: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Client',
-      required: [true, 'Please select or assign a client'],
+      required: false,
     },
     title: {
       type: String,

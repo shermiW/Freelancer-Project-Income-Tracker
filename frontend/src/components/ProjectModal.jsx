@@ -1,51 +1,76 @@
 import React, { useState, useEffect } from 'react';
-import { X, FolderPlus, Edit3, Loader2 } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
+
+const defaultClientList = [
+  { _id: 'c1', name: 'Sarah Chen', company: 'Northwind Studio' },
+  { _id: 'c2', name: 'Marcus Bell', company: 'Lumen Coffee Co.' },
+  { _id: 'c3', name: 'Priya Raman', company: 'Fieldnote Health' },
+  { _id: 'c4', name: 'Diego Alvarez', company: 'Atlas Freight' },
+  { _id: 'c5', name: 'Hannah Okafor', company: 'Brightside Learning' },
+];
 
 const ProjectModal = ({ isOpen, onClose, onSave, project, clients = [] }) => {
+  const activeClients = clients.length > 0 ? clients : defaultClientList;
+
   const [formData, setFormData] = useState({
     title: '',
     client: '',
     fee: '',
-    amountPaid: '0',
     status: 'Pending',
+    deadline: '',
     description: '',
-    dueDate: '',
   });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Helper to extract client ID or key from project
+  const resolveClientId = (clientProp) => {
+    if (!clientProp) return '';
+    if (typeof clientProp === 'string') return clientProp;
+    if (clientProp._id) return clientProp._id;
+    const match = activeClients.find((c) => c.name === clientProp.name);
+    return match ? match._id : clientProp.name;
+  };
+
   useEffect(() => {
     if (project) {
+      let deadlineVal = '';
+      if (project.dueDate) {
+        try {
+          deadlineVal = new Date(project.dueDate).toISOString().split('T')[0];
+        } catch {
+          deadlineVal = '';
+        }
+      }
+
       setFormData({
         title: project.title || '',
-        client: project.client?._id || project.client || '',
-        fee: project.fee !== undefined ? project.fee : '',
-        amountPaid: project.amountPaid !== undefined ? project.amountPaid : 0,
+        client: resolveClientId(project.client),
+        fee: project.fee !== undefined ? String(project.fee) : '',
         status: project.status || 'Pending',
+        deadline: deadlineVal,
         description: project.description || '',
-        dueDate: project.dueDate ? new Date(project.dueDate).toISOString().split('T')[0] : '',
       });
     } else {
       setFormData({
         title: '',
-        client: clients.length > 0 ? clients[0]._id : '',
-        fee: '',
-        amountPaid: '0',
+        client: '',
+        fee: '0',
         status: 'Pending',
+        deadline: '',
         description: '',
-        dueDate: '',
       });
     }
     setError('');
-  }, [project, clients, isOpen]);
+  }, [project, isOpen]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title.trim()) {
-      setError('Project title is required.');
+      setError('Project name is required.');
       return;
     }
 
@@ -54,9 +79,12 @@ const ProjectModal = ({ isOpen, onClose, onSave, project, clients = [] }) => {
 
     try {
       await onSave({
-        ...formData,
-        fee: Number(formData.fee),
-        amountPaid: Number(formData.amountPaid || 0),
+        title: formData.title.trim(),
+        client: formData.client || null,
+        fee: formData.fee !== '' ? Number(formData.fee) : 0,
+        status: formData.status,
+        dueDate: formData.deadline || null,
+        description: formData.description || '',
       });
       onClose();
     } catch (err) {
@@ -66,148 +94,167 @@ const ProjectModal = ({ isOpen, onClose, onSave, project, clients = [] }) => {
     }
   };
 
+  const isEditMode = Boolean(project);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-      <div className="bg-white w-full max-w-xl rounded-2xl border border-slate-100 shadow-2xl overflow-hidden animate-modal">
+      <div className="bg-white w-full max-w-lg rounded-2xl border border-slate-100 shadow-2xl p-6 sm:p-7 animate-modal">
         {/* Header */}
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-indigo-50 text-[#5046e5]">
-              {project ? <Edit3 className="w-5 h-5" /> : <FolderPlus className="w-5 h-5" />}
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-slate-900 my-0">
-                {project ? 'Edit Project Details' : 'Create New Project'}
-              </h3>
-              <p className="text-xs text-slate-400 mt-0.5">Fill in project specs, client, and fee structure</p>
-            </div>
+        <div className="flex items-start justify-between pb-4">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900 my-0 tracking-tight">
+              {isEditMode ? 'Edit Project' : 'Create New Project'}
+            </h2>
+            <p className="text-xs text-slate-500 mt-1 font-normal">
+              {isEditMode
+                ? 'Update the details for this project.'
+                : 'Add a project to start tracking its fee and deadline.'}
+            </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+            className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-medium">
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-medium">
               {error}
             </div>
           )}
 
+          {/* Project Name */}
           <div>
-            <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">
-              Project Title *
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              Project Name
             </label>
             <input
               type="text"
               required
-              placeholder="e.g., E-Commerce Platform Redesign"
+              placeholder="e.g. Brand Identity Refresh"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-slate-800 text-sm focus:outline-none focus:border-[#5046e5] focus:ring-2 focus:ring-indigo-100"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#5046e5] focus:ring-1 focus:ring-[#5046e5]"
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">
-                Client *
-              </label>
+          {/* Client */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              Client
+            </label>
+            <div className="relative">
               <select
-                required
                 value={formData.client}
                 onChange={(e) => setFormData({ ...formData, client: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-slate-800 text-sm bg-white focus:outline-none focus:border-[#5046e5] focus:ring-2 focus:ring-indigo-100"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:border-[#5046e5] focus:ring-1 focus:ring-[#5046e5] cursor-pointer appearance-none pr-9 font-normal"
               >
-                <option value="" disabled>Select a client</option>
-                {clients.map((c) => (
-                  <option key={c._id} value={c._id}>
-                    {c.name} {c.company ? `(${c.company})` : ''}
+                <option value="">Select a client</option>
+                {activeClients.map((c) => (
+                  <option key={c._id || c.name} value={c._id || c.name}>
+                    {c.name}{c.company ? ` — ${c.company}` : ''}
                   </option>
                 ))}
               </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">
-                Project Status
-              </label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-slate-800 text-sm bg-white focus:outline-none focus:border-[#5046e5] focus:ring-2 focus:ring-indigo-100"
-              >
-                <option value="Pending">Pending</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Completed">Completed</option>
-                <option value="Paid">Paid</option>
-              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+                <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                </svg>
+              </div>
             </div>
           </div>
 
+          {/* Project Fee (USD) & Status */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">
-                Total Fee ($) *
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Project Fee (USD)
               </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                required
-                placeholder="2500.00"
-                value={formData.fee}
-                onChange={(e) => setFormData({ ...formData, fee: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-slate-800 text-sm focus:outline-none focus:border-[#5046e5] focus:ring-2 focus:ring-indigo-100"
-              />
+              <div className="relative">
+                <span className="absolute left-3.5 top-2.5 text-slate-500 text-sm font-medium">$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0"
+                  value={formData.fee}
+                  onChange={(e) => setFormData({ ...formData, fee: e.target.value })}
+                  className="w-full pl-7 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 focus:outline-none focus:border-[#5046e5] focus:ring-1 focus:ring-[#5046e5]"
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">
-                Due Date
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Status
               </label>
-              <input
-                type="date"
-                value={formData.dueDate}
-                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-slate-800 text-sm bg-white focus:outline-none focus:border-[#5046e5] focus:ring-2 focus:ring-indigo-100"
-              />
+              <div className="relative">
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:border-[#5046e5] focus:ring-1 focus:ring-[#5046e5] cursor-pointer appearance-none pr-9 font-normal"
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Paid">Paid</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                  </svg>
+                </div>
+              </div>
             </div>
           </div>
 
+          {/* Deadline */}
           <div>
-            <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">
-              Description / Deliverables
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              Deadline
+            </label>
+            <input
+              type="date"
+              value={formData.deadline}
+              onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:border-[#5046e5] focus:ring-1 focus:ring-[#5046e5] cursor-pointer"
+            />
+          </div>
+
+          {/* Project Description */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              Project Description
             </label>
             <textarea
-              rows="3"
-              placeholder="Scope of work, milestones, key requirements..."
+              rows={3}
+              placeholder="Scope, deliverables, notes..."
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-slate-800 text-sm resize-none focus:outline-none focus:border-[#5046e5] focus:ring-2 focus:ring-indigo-100"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 placeholder:text-slate-400 resize-none focus:outline-none focus:border-[#5046e5] focus:ring-1 focus:ring-[#5046e5]"
             ></textarea>
           </div>
 
           {/* Modal Actions */}
-          <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+          <div className="pt-2 flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#5046e5] hover:bg-[#4338ca] disabled:opacity-50 flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+              className="px-5 py-2 rounded-xl text-xs font-semibold text-white bg-[#5046e5] hover:bg-[#4338ca] disabled:opacity-50 flex items-center gap-2 shadow-xs transition-colors cursor-pointer"
             >
-              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-              {project ? 'Update Project' : 'Create Project'}
+              {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              <span>Save Project</span>
             </button>
           </div>
         </form>

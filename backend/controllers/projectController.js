@@ -57,25 +57,24 @@ const getProjects = async (req, res, next) => {
 // @access  Private
 const createProject = async (req, res, next) => {
   try {
-    const { title, client, fee, amountPaid, status, description, dueDate, paidDate } = req.body;
+    const { title, name, client, fee, amountPaid, status, description, dueDate, deadline, paidDate } = req.body;
 
-    // Verify client belongs to logged in user
-    const clientExists = await Client.findOne({ _id: client, user: req.user._id });
-    if (!clientExists) {
-      return res.status(400).json({ message: 'Selected client not found or not owned by user' });
+    let clientExists = null;
+    if (client) {
+      clientExists = await Client.findOne({ _id: client, user: req.user._id });
     }
 
     const normalizedStat = normalizeStatus(status) || 'Pending';
 
     const project = await Project.create({
       user: req.user._id,
-      client,
-      title,
-      fee: Number(fee),
-      amountPaid: amountPaid !== undefined ? Number(amountPaid) : 0,
+      client: clientExists ? clientExists._id : null,
+      title: (title || name || '').trim(),
+      fee: fee !== undefined && fee !== '' ? Number(fee) : 0,
+      amountPaid: amountPaid !== undefined && amountPaid !== '' ? Number(amountPaid) : 0,
       status: normalizedStat,
       description: description || '',
-      dueDate: dueDate || null,
+      dueDate: dueDate || deadline || null,
       paidDate: normalizedStat === 'Paid' ? (paidDate || new Date()) : (paidDate || null),
     });
 

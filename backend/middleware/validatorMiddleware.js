@@ -44,11 +44,26 @@ const updateClientValidation = [
 
 // Project Validation Rules
 const createProjectValidation = [
-  body('title').notEmpty().withMessage('Project title is required').trim(),
-  body('client').notEmpty().withMessage('Client ID is required').isMongoId().withMessage('Invalid client ID format'),
+  body('title')
+    .optional()
+    .trim(),
+  body('name')
+    .optional()
+    .trim(),
+  body().custom((value, { req }) => {
+    const title = req.body.title || req.body.name;
+    if (!title || !title.trim()) {
+      throw new Error('Project name is required');
+    }
+    req.body.title = title.trim();
+    return true;
+  }),
+  body('client')
+    .optional({ checkFalsy: true })
+    .isMongoId()
+    .withMessage('Invalid client ID format'),
   body('fee')
-    .notEmpty()
-    .withMessage('Fee is required')
+    .optional({ checkFalsy: true })
     .isFloat({ min: 0 })
     .withMessage('Fee must be a positive number or zero'),
   body('amountPaid')
@@ -59,10 +74,17 @@ const createProjectValidation = [
 ];
 
 const updateProjectValidation = [
-  body('title').optional().notEmpty().withMessage('Project title cannot be empty').trim(),
-  body('client').optional().isMongoId().withMessage('Invalid client ID format'),
-  body('fee')
+  body('title')
     .optional()
+    .notEmpty()
+    .withMessage('Project title cannot be empty')
+    .trim(),
+  body('client')
+    .optional({ checkFalsy: true })
+    .isMongoId()
+    .withMessage('Invalid client ID format'),
+  body('fee')
+    .optional({ checkFalsy: true })
     .isFloat({ min: 0 })
     .withMessage('Fee must be a positive number or zero'),
   body('amountPaid')

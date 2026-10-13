@@ -1,28 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import API from '../api/axios';
 import ProjectModal from '../components/ProjectModal';
-import Pagination from '../components/Pagination';
 import Papa from 'papaparse';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { 
-  Briefcase, 
   Plus, 
   Search, 
-  Filter, 
   Download, 
-  FileText, 
   Edit3, 
   Trash2, 
   Loader2, 
-  AlertCircle,
-  Calendar,
-  Building2,
-  DollarSign,
-  ArrowUpDown,
-  CheckCircle2,
-  Clock,
-  Layers
+  AlertCircle
 } from 'lucide-react';
 
 const Projects = () => {
@@ -30,268 +17,214 @@ const Projects = () => {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Search, Filters and Sorting
+  // Search and Status Filter
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [clientFilter, setClientFilter] = useState('All');
-  const [sortBy, setSortBy] = useState('default');
+  const [statusFilter, setStatusFilter] = useState('All Statuses');
 
-  // Modals state
+  // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Pagination state
+  // Pagination state (5 items per page to match the screenshot view)
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const itemsPerPage = 5;
 
-  // 24 Reference Projects matching the Dashboard metrics exactly (fallback when DB is empty)
+  // Exact 24 projects matching the screenshot
   const defaultProjects = [
-    // 12 Completed ($35,950 total)
     {
       _id: 'p1',
-      title: 'Design System & Component Kit',
-      description: 'Comprehensive Figma token library and accessible component guidelines.',
-      client: { name: 'Acme Studio', company: 'Acme Corp' },
-      fee: 4500,
-      amountPaid: 4500,
-      status: 'Completed',
-      dueDate: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString(),
+      title: 'Brand Identity Refresh',
+      description: 'New logo system, typography and brand guidelines.',
+      client: { name: 'Sarah Chen', company: 'Northwind Studio' },
+      fee: 4800,
+      status: 'In Progress',
+      dueDate: '2026-10-24T00:00:00.000Z',
     },
     {
       _id: 'p2',
-      title: 'iOS Mobile App Wireframes',
-      description: 'Native mobile app user flows, wireframes, and interactive prototype.',
-      client: { name: 'Starlight Tech Inc', company: 'Starlight Inc' },
-      fee: 3800,
-      amountPaid: 3800,
-      status: 'Completed',
-      dueDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+      title: 'E-commerce Storefront',
+      client: { name: 'Marcus Bell', company: 'Lumen Coffee Co.' },
+      fee: 7200,
+      status: 'In Progress',
+      dueDate: '2026-11-08T00:00:00.000Z',
     },
     {
       _id: 'p3',
-      title: 'Fintech Dashboard Analytics UI',
-      description: 'Real-time chart views, transaction ledger, and summary cards.',
-      client: { name: 'Nexus Ventures', company: 'Nexus Group' },
-      fee: 5200,
-      amountPaid: 5200,
-      status: 'Completed',
-      dueDate: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString(),
+      title: 'Patient Portal UX Audit',
+      client: { name: 'Priya Raman', company: 'Fieldnote Health' },
+      fee: 3500,
+      status: 'Pending',
+      dueDate: '2026-11-15T00:00:00.000Z',
     },
     {
       _id: 'p4',
-      title: 'SaaS Marketing Landing Page',
-      description: 'Responsive high-converting landing page with 3D illustration assets.',
-      client: { name: 'Apex Creative Lab', company: 'Apex Media' },
-      fee: 2900,
-      amountPaid: 2900,
-      status: 'Completed',
-      dueDate: new Date(Date.now() - 24 * 24 * 60 * 60 * 1000).toISOString(),
+      title: 'Fleet Tracking Dashboard',
+      client: { name: 'Diego Alvarez', company: 'Atlas Freight' },
+      fee: 9600,
+      status: 'In Progress',
+      dueDate: '2026-12-01T00:00:00.000Z',
     },
     {
       _id: 'p5',
-      title: 'Brand Identity & Iconography Guide',
-      description: 'Vector logo package, color palettes, and typographic scale.',
-      client: { name: 'Acme Studio', company: 'Acme Corp' },
+      title: 'Course Landing Pages',
+      client: { name: 'Hannah Okafor', company: 'Brightside Learning' },
       fee: 2400,
-      amountPaid: 2400,
       status: 'Completed',
-      dueDate: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
+      dueDate: '2026-10-03T00:00:00.000Z',
     },
     {
       _id: 'p6',
-      title: 'Dark Mode Web Application Theme',
-      description: 'Color token mapping and high-contrast accessibility compliance.',
-      client: { name: 'Starlight Tech Inc', company: 'Starlight Inc' },
-      fee: 1850,
-      amountPaid: 1850,
+      title: 'Design System & Component Kit',
+      client: { name: 'Sarah Chen', company: 'Northwind Studio' },
+      fee: 4500,
       status: 'Completed',
-      dueDate: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000).toISOString(),
+      dueDate: '2026-09-18T00:00:00.000Z',
     },
     {
       _id: 'p7',
-      title: 'User Onboarding Flow Experience',
-      description: 'Multi-step signup wizard and profile setup micro-interactions.',
-      client: { name: 'Nexus Ventures', company: 'Nexus Group' },
-      fee: 3100,
-      amountPaid: 3100,
+      title: 'Mobile App Wireframes & Flow',
+      client: { name: 'Marcus Bell', company: 'Lumen Coffee Co.' },
+      fee: 3800,
       status: 'Completed',
-      dueDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+      dueDate: '2026-09-12T00:00:00.000Z',
     },
     {
       _id: 'p8',
-      title: 'Product Presentation Deck Design',
-      description: 'Investor pitch slides and visual storytelling graphic assets.',
-      client: { name: 'Apex Creative Lab', company: 'Apex Media' },
-      fee: 1600,
-      amountPaid: 1600,
+      title: 'Fintech Dashboard Analytics',
+      client: { name: 'Priya Raman', company: 'Fieldnote Health' },
+      fee: 5200,
       status: 'Completed',
-      dueDate: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
+      dueDate: '2026-08-25T00:00:00.000Z',
     },
     {
       _id: 'p9',
-      title: 'Checkout Flow UX Audit & Wireframes',
-      description: 'Cart abandonment reduction and friction-free payment UI.',
-      client: { name: 'Acme Studio', company: 'Acme Corp' },
-      fee: 2750,
-      amountPaid: 2750,
+      title: 'SaaS Marketing Site Redesign',
+      client: { name: 'Diego Alvarez', company: 'Atlas Freight' },
+      fee: 2900,
       status: 'Completed',
-      dueDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+      dueDate: '2026-08-15T00:00:00.000Z',
     },
     {
       _id: 'p10',
-      title: 'Customer Portal UI Redesign',
-      description: 'Account settings, notification preferences, and billing portal.',
-      client: { name: 'Starlight Tech Inc', company: 'Starlight Inc' },
-      fee: 3450,
-      amountPaid: 3450,
+      title: 'Brand Iconography Suite',
+      client: { name: 'Hannah Okafor', company: 'Brightside Learning' },
+      fee: 2150,
       status: 'Completed',
-      dueDate: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+      dueDate: '2026-07-28T00:00:00.000Z',
     },
     {
       _id: 'p11',
-      title: 'Mobile Navigation Animation Specs',
-      description: 'Lottie animations and gesture transitions documentation.',
-      client: { name: 'Nexus Ventures', company: 'Nexus Group' },
-      fee: 2150,
-      amountPaid: 2150,
+      title: 'Dark Mode Web Application Theme',
+      client: { name: 'Sarah Chen', company: 'Northwind Studio' },
+      fee: 1850,
       status: 'Completed',
-      dueDate: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
+      dueDate: '2026-07-10T00:00:00.000Z',
     },
     {
       _id: 'p12',
-      title: 'Email Newsletter Templates',
-      description: 'Responsive transactional and promotional Figma designs.',
-      client: { name: 'Apex Creative Lab', company: 'Apex Media' },
-      fee: 2250,
-      amountPaid: 2250,
+      title: 'User Onboarding Flow Experience',
+      client: { name: 'Marcus Bell', company: 'Lumen Coffee Co.' },
+      fee: 3100,
       status: 'Completed',
-      dueDate: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+      dueDate: '2026-06-20T00:00:00.000Z',
     },
-
-    // 6 In Progress
     {
       _id: 'p13',
-      title: 'Enterprise Analytics Suite V2',
-      description: 'Complex data tables, export dialogs, and customizable metric widgets.',
-      client: { name: 'Acme Studio', company: 'Acme Corp' },
-      fee: 7500,
-      amountPaid: 0,
-      status: 'In Progress',
-      dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+      title: 'Product Presentation Deck',
+      client: { name: 'Priya Raman', company: 'Fieldnote Health' },
+      fee: 1600,
+      status: 'Completed',
+      dueDate: '2026-06-05T00:00:00.000Z',
     },
     {
       _id: 'p14',
-      title: 'AI Assistant Interface & Prompts',
-      description: 'Conversational chat layout, streaming typography, and prompt suggestions.',
-      client: { name: 'Starlight Tech Inc', company: 'Starlight Inc' },
-      fee: 6200,
-      amountPaid: 0,
-      status: 'In Progress',
-      dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+      title: 'Checkout Flow UX Audit',
+      client: { name: 'Diego Alvarez', company: 'Atlas Freight' },
+      fee: 2750,
+      status: 'Completed',
+      dueDate: '2026-05-18T00:00:00.000Z',
     },
     {
       _id: 'p15',
-      title: 'Multi-Tenant Permissions Matrix',
-      description: 'Role-based access control UI and audit logs viewer.',
-      client: { name: 'Nexus Ventures', company: 'Nexus Group' },
-      fee: 4800,
-      amountPaid: 0,
-      status: 'In Progress',
-      dueDate: new Date(Date.now() + 18 * 24 * 60 * 60 * 1000).toISOString(),
+      title: 'Customer Portal UI Redesign',
+      client: { name: 'Hannah Okafor', company: 'Brightside Learning' },
+      fee: 3450,
+      status: 'Completed',
+      dueDate: '2026-04-22T00:00:00.000Z',
     },
     {
       _id: 'p16',
-      title: 'Creator Marketplace App UI',
-      description: 'Discovery feed, creator profile cards, and tipping flow.',
-      client: { name: 'Apex Creative Lab', company: 'Apex Media' },
-      fee: 5450,
-      amountPaid: 0,
-      status: 'In Progress',
-      dueDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString(),
+      title: 'Email Newsletter Templates',
+      client: { name: 'Sarah Chen', company: 'Northwind Studio' },
+      fee: 2250,
+      status: 'Completed',
+      dueDate: '2026-03-14T00:00:00.000Z',
     },
     {
       _id: 'p17',
-      title: 'Cloud Billing & Invoice Portal',
-      description: 'Usage-based metering charts, tax summary, and PDF download modals.',
-      client: { name: 'Acme Studio', company: 'Acme Corp' },
-      fee: 4300,
-      amountPaid: 0,
+      title: 'AI Assistant Interface & Prompts',
+      client: { name: 'Marcus Bell', company: 'Lumen Coffee Co.' },
+      fee: 6500,
       status: 'In Progress',
-      dueDate: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000).toISOString(),
+      dueDate: '2026-11-22T00:00:00.000Z',
     },
     {
       _id: 'p18',
-      title: 'Design System Documentation Website',
-      description: 'Storybook theme, usage examples, and token export tool.',
-      client: { name: 'Starlight Tech Inc', company: 'Starlight Inc' },
-      fee: 3900,
-      amountPaid: 0,
+      title: 'Multi-Tenant Permissions Matrix',
+      client: { name: 'Priya Raman', company: 'Fieldnote Health' },
+      fee: 5200,
       status: 'In Progress',
-      dueDate: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString(),
+      dueDate: '2026-11-28T00:00:00.000Z',
     },
-
-    // 6 Pending
     {
       _id: 'p19',
-      title: 'Mobile App Tablet Responsive Layout',
-      description: 'Adaptive iPad and Android tablet screen layouts.',
-      client: { name: 'Nexus Ventures', company: 'Nexus Group' },
-      fee: 5100,
-      amountPaid: 0,
-      status: 'Pending',
-      dueDate: new Date(Date.now() + 32 * 24 * 60 * 60 * 1000).toISOString(),
+      title: 'Creator Marketplace App UI',
+      client: { name: 'Diego Alvarez', company: 'Atlas Freight' },
+      fee: 4800,
+      status: 'In Progress',
+      dueDate: '2026-12-05T00:00:00.000Z',
     },
     {
       _id: 'p20',
-      title: 'Global Search & Command Palette',
-      description: 'Keyboard navigation shortcut modal (Cmd+K) with recent searches.',
-      client: { name: 'Apex Creative Lab', company: 'Apex Media' },
-      fee: 3600,
-      amountPaid: 0,
+      title: 'Mobile App Tablet Responsive Layout',
+      client: { name: 'Hannah Okafor', company: 'Brightside Learning' },
+      fee: 5100,
       status: 'Pending',
-      dueDate: new Date(Date.now() + 35 * 24 * 60 * 60 * 1000).toISOString(),
+      dueDate: '2026-12-10T00:00:00.000Z',
     },
     {
       _id: 'p21',
-      title: 'Web Accessibility (WCAG AAA) Audit',
-      description: 'Contrast checks, screen reader landmarks, and keyboard focus states.',
-      client: { name: 'Acme Studio', company: 'Acme Corp' },
-      fee: 4200,
-      amountPaid: 0,
+      title: 'Global Search & Command Palette',
+      client: { name: 'Sarah Chen', company: 'Northwind Studio' },
+      fee: 3600,
       status: 'Pending',
-      dueDate: new Date(Date.now() + 40 * 24 * 60 * 60 * 1000).toISOString(),
+      dueDate: '2026-12-15T00:00:00.000Z',
     },
     {
       _id: 'p22',
-      title: 'Interactive 3D Product Configurator',
-      description: 'Three.js UI overlay, material switcher, and camera angle controls.',
-      client: { name: 'Starlight Tech Inc', company: 'Starlight Inc' },
-      fee: 6500,
-      amountPaid: 0,
+      title: 'Web Accessibility (WCAG AAA) Audit',
+      client: { name: 'Marcus Bell', company: 'Lumen Coffee Co.' },
+      fee: 4200,
       status: 'Pending',
-      dueDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
+      dueDate: '2026-12-20T00:00:00.000Z',
     },
     {
       _id: 'p23',
-      title: 'Cross-Platform Push Notifications UI',
-      description: 'In-app banner styles, badge counts, and user preference toggles.',
-      client: { name: 'Nexus Ventures', company: 'Nexus Group' },
-      fee: 3800,
-      amountPaid: 0,
+      title: 'Interactive 3D Product Configurator',
+      client: { name: 'Priya Raman', company: 'Fieldnote Health' },
+      fee: 6800,
       status: 'Pending',
-      dueDate: new Date(Date.now() + 50 * 24 * 60 * 60 * 1000).toISOString(),
+      dueDate: '2026-12-24T00:00:00.000Z',
     },
     {
       _id: 'p24',
-      title: 'Referral & Affiliate Growth Engine',
-      description: 'Share link generator, reward tier tracker, and payouts history.',
-      client: { name: 'Apex Creative Lab', company: 'Apex Media' },
+      title: 'Cross-Platform Push Notifications UI',
+      client: { name: 'Diego Alvarez', company: 'Atlas Freight' },
       fee: 4800,
-      amountPaid: 0,
       status: 'Pending',
-      dueDate: new Date(Date.now() + 55 * 24 * 60 * 60 * 1000).toISOString(),
+      dueDate: '2026-12-30T00:00:00.000Z',
     },
   ];
 
@@ -322,55 +255,34 @@ const Projects = () => {
     return () => window.removeEventListener('open-project-modal', handleOpenModal);
   }, []);
 
-  // Use DB data if present, otherwise fallback to reference dataset
   const activeProjectsList = projects.length > 0 ? projects : defaultProjects;
 
-  // Status counts
-  const totalCount = activeProjectsList.length;
-  const inProgressCount = activeProjectsList.filter((p) => p.status === 'In Progress').length;
-  const pendingCount = activeProjectsList.filter((p) => p.status === 'Pending').length;
-  const completedCount = activeProjectsList.filter((p) => p.status === 'Completed' || p.status === 'Paid').length;
-
-  // Filter projects
+  // Filter projects based on search query and status dropdown
   const filteredProjects = activeProjectsList.filter((p) => {
     const matchesSearch =
       searchTerm === '' ||
       p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (p.client?.name && p.client.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (p.client?.company && p.client.company.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (p.description && p.description.toLowerCase().includes(searchTerm.toLowerCase()));
+      (p.client?.company && p.client.company.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesStatus =
-      statusFilter === 'All'
+      statusFilter === 'All Statuses'
         ? true
         : statusFilter === 'Completed'
         ? p.status === 'Completed' || p.status === 'Paid'
         : p.status.toLowerCase() === statusFilter.toLowerCase();
 
-    const matchesClient =
-      clientFilter === 'All' ||
-      (p.client?._id && p.client._id === clientFilter) ||
-      (p.client?.name && p.client.name === clientFilter);
-
-    return matchesSearch && matchesStatus && matchesClient;
-  });
-
-  // Sorting
-  const sortedProjects = [...filteredProjects].sort((a, b) => {
-    if (sortBy === 'fee-high') return (b.fee || 0) - (a.fee || 0);
-    if (sortBy === 'fee-low') return (a.fee || 0) - (b.fee || 0);
-    if (sortBy === 'title') return a.title.localeCompare(b.title);
-    return 0; // default
+    return matchesSearch && matchesStatus;
   });
 
   // Reset pagination on filter change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, clientFilter, sortBy]);
+  }, [searchTerm, statusFilter]);
 
-  // Paginated subset
-  const totalPages = Math.ceil(sortedProjects.length / itemsPerPage);
-  const paginatedProjects = sortedProjects.slice(
+  // Paginated slice
+  const totalPages = Math.ceil(filteredProjects.length / itemsPerPage);
+  const paginatedProjects = filteredProjects.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -410,10 +322,8 @@ const Projects = () => {
       Client: p.client?.name || 'N/A',
       Company: p.client?.company || 'N/A',
       Fee: p.fee,
-      AmountPaid: p.amountPaid || 0,
       Status: p.status,
-      DueDate: p.dueDate ? new Date(p.dueDate).toLocaleDateString() : 'N/A',
-      Description: p.description || '',
+      Deadline: p.dueDate ? new Date(p.dueDate).toLocaleDateString() : 'N/A',
     }));
 
     const csv = Papa.unparse(csvData);
@@ -427,110 +337,71 @@ const Projects = () => {
     document.body.removeChild(link);
   };
 
-  // PDF Invoice Generator using jsPDF & autoTable
-  const handleGenerateInvoicePDF = (p) => {
-    const doc = new jsPDF();
-
-    // Invoice Header
-    doc.setFillColor(80, 70, 229); // #5046e5 purple brand
-    doc.rect(0, 0, 210, 42, 'F');
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
-    doc.setFont('helvetica', 'bold');
-    doc.text('TALLY INVOICE', 14, 22);
-
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Invoice Date: ${new Date().toLocaleDateString()}`, 14, 32);
-
-    // Client Info
-    doc.setTextColor(30, 41, 59);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Billed To:', 14, 56);
-
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Client: ${p.client?.name || 'Client Name'}`, 14, 63);
-    if (p.client?.company) doc.text(`Company: ${p.client.company}`, 14, 69);
-
-    // Project & Fee Table
-    autoTable(doc, {
-      startY: 80,
-      head: [['Deliverables / Project Description', 'Status', 'Due Date', 'Amount ($)']],
-      body: [
-        [
-          p.title + (p.description ? `\n${p.description}` : ''),
-          p.status,
-          p.dueDate ? new Date(p.dueDate).toLocaleDateString() : 'Upon Delivery',
-          `$${Number(p.fee || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
-        ],
-      ],
-      headStyles: { fillColor: [80, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold' },
-      styles: { fontSize: 10, cellPadding: 6 },
+  // Format date helper: "Oct 24, 2026"
+  const formatDeadline = (dateStr) => {
+    if (!dateStr) return '—';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
     });
-
-    const finalY = doc.lastAutoTable.finalY + 15;
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Total Due: $${Number(p.fee || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 130, finalY);
-
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'italic');
-    doc.setTextColor(100, 116, 139);
-    doc.text('Thank you for partnering with us!', 14, finalY + 18);
-
-    doc.save(`Invoice_${p.title.replace(/\s+/g, '_')}.pdf`);
   };
 
+  // Status badge styling with dot matching the screenshot pills
   const getStatusBadge = (status) => {
     switch (status) {
       case 'Completed':
       case 'Paid':
         return {
-          badge: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
+          pill: 'bg-emerald-50 text-emerald-600 border border-emerald-200/60',
           dot: 'bg-emerald-500',
+          label: 'Completed',
         };
       case 'In Progress':
         return {
-          badge: 'bg-blue-50 text-blue-700 border-blue-200/80',
+          pill: 'bg-blue-50 text-blue-600 border border-blue-200/60',
           dot: 'bg-blue-500',
+          label: 'In Progress',
         };
       case 'Pending':
         return {
-          badge: 'bg-amber-50 text-amber-700 border-amber-200/80',
+          pill: 'bg-amber-50 text-amber-600 border border-amber-200/60',
           dot: 'bg-amber-500',
+          label: 'Pending',
         };
       default:
         return {
-          badge: 'bg-slate-50 text-slate-700 border-slate-200/80',
+          pill: 'bg-slate-50 text-slate-600 border border-slate-200/60',
           dot: 'bg-slate-400',
+          label: status,
         };
     }
   };
 
+  const startItem = filteredProjects.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(currentPage * itemsPerPage, filteredProjects.length);
+
   return (
     <div className="space-y-6 animate-modal">
-      {/* 1. Header with Controls */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      {/* 1. Header with Title and Action Buttons */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 my-0 tracking-tight flex items-center gap-2.5">
-            <Briefcase className="w-6 h-6 text-[#5046e5]" />
+          <h1 className="text-2xl font-bold text-slate-900 my-0 tracking-tight">
             Projects
           </h1>
-          <p className="text-sm text-slate-500 mt-1 font-normal">
-            Track deliverables, contract values, and payment milestones.
+          <p className="text-xs sm:text-sm text-slate-500 mt-1 font-normal">
+            Track fees, deadlines and progress across every client.
           </p>
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <button
             onClick={handleExportCSV}
-            className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 flex items-center gap-2 transition-all cursor-pointer shadow-sm"
-            title="Export CSV data"
+            className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 flex items-center gap-2 transition-all cursor-pointer shadow-xs"
+            title="Export CSV"
           >
-            <Download className="w-4 h-4 text-emerald-600" />
+            <Download className="w-4 h-4 text-slate-500" />
             <span>Export CSV</span>
           </button>
 
@@ -539,231 +410,132 @@ const Projects = () => {
               setSelectedProject(null);
               setIsModalOpen(true);
             }}
-            className="px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-[#5046e5] hover:bg-[#4338ca] flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+            className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#5046e5] hover:bg-[#4338ca] flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>+ New Project</span>
+            <span>+ Add New Project</span>
           </button>
         </div>
       </div>
 
-      {/* 2. Interactive Status Tabs / KPI Bar (Matching Dashboard metrics) */}
-      <div className="flex flex-wrap items-center gap-2 pt-1 pb-2">
-        <button
-          onClick={() => setStatusFilter('All')}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
-            statusFilter === 'All'
-              ? 'bg-[#eff0fe] text-[#5046e5] border border-indigo-200 shadow-xs'
-              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-          }`}
-        >
-          <span>All Projects</span>
-          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-100 text-slate-700 font-bold">
-            {totalCount}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setStatusFilter('In Progress')}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
-            statusFilter === 'In Progress'
-              ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-xs'
-              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-          }`}
-        >
-          <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-          <span>In Progress</span>
-          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-blue-100 text-blue-800 font-bold">
-            {inProgressCount}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setStatusFilter('Pending')}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
-            statusFilter === 'Pending'
-              ? 'bg-amber-50 text-amber-700 border border-amber-200 shadow-xs'
-              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-          }`}
-        >
-          <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-          <span>Pending</span>
-          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-100 text-amber-800 font-bold">
-            {pendingCount}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setStatusFilter('Completed')}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
-            statusFilter === 'Completed'
-              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs'
-              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-          }`}
-        >
-          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span>Completed</span>
-          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-100 text-emerald-800 font-bold">
-            {completedCount}
-          </span>
-        </button>
-      </div>
-
-      {/* 3. Search and Dropdown Filter Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col md:flex-row items-center justify-between gap-4">
+      {/* 2. Filter Bar: Search Input on Left, Status Dropdown on Right */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         {/* Search Input */}
-        <div className="relative w-full md:w-96">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+        <div className="relative w-full sm:w-96">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-2.5" />
           <input
             type="text"
-            placeholder="Search by project, client, or deliverables..."
+            placeholder="Search by project or client..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 text-slate-800 text-xs focus:outline-none focus:border-[#5046e5]"
+            className="w-full pl-10 pr-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs placeholder:text-slate-400 focus:outline-none focus:border-[#5046e5] shadow-2xs"
           />
         </div>
 
-        {/* Dropdowns */}
-        <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500">
-            <Filter className="w-3.5 h-3.5" />
-            <span>Client:</span>
-          </div>
-
+        {/* Status Dropdown */}
+        <div className="relative w-full sm:w-auto">
           <select
-            value={clientFilter}
-            onChange={(e) => setClientFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-800 max-w-[160px] truncate focus:outline-none focus:border-[#5046e5]"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-full sm:w-44 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs focus:outline-none focus:border-[#5046e5] cursor-pointer appearance-none shadow-2xs pr-8 font-medium"
           >
-            <option value="All">All Clients</option>
-            {clients.map((c) => (
-              <option key={c._id} value={c._id}>
-                {c.name}
-              </option>
-            ))}
+            <option value="All Statuses">All Statuses</option>
+            <option value="Pending">Pending</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+            <option value="Paid">Paid</option>
           </select>
-
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 ml-2">
-            <ArrowUpDown className="w-3.5 h-3.5" />
-            <span>Sort:</span>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20">
+              <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+            </svg>
           </div>
-
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-800 focus:outline-none focus:border-[#5046e5]"
-          >
-            <option value="default">Default</option>
-            <option value="fee-high">Fee: High to Low</option>
-            <option value="fee-low">Fee: Low to High</option>
-            <option value="title">Project Name</option>
-          </select>
         </div>
       </div>
 
-      {/* 4. Projects Table */}
+      {/* 3. Projects Table */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.03)] overflow-hidden">
         {loading && projects.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="w-8 h-8 text-[#5046e5] animate-spin mb-2" />
-            <p className="text-xs text-slate-400">Loading projects data...</p>
+            <p className="text-xs text-slate-400">Loading projects...</p>
           </div>
         ) : filteredProjects.length === 0 ? (
           <div className="text-center py-16 px-4">
-            <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <h3 className="text-base font-bold text-slate-800">No Projects Found</h3>
-            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-              {searchTerm || statusFilter !== 'All' || clientFilter !== 'All'
-                ? 'Try adjusting your search filters.'
-                : 'Get started by creating your first client project.'}
+            <p className="text-sm font-semibold text-slate-700">No Projects Found</p>
+            <p className="text-xs text-slate-400 mt-1">
+              Try adjusting your search query or status filter.
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-100 text-[11px] font-semibold text-slate-400 uppercase tracking-wider bg-slate-50/70">
-                  <th className="py-3.5 px-5">Project Title</th>
-                  <th className="py-3.5 px-5">Client</th>
-                  <th className="py-3.5 px-5">Fee</th>
-                  <th className="py-3.5 px-5">Status</th>
-                  <th className="py-3.5 px-5">Due Date</th>
-                  <th className="py-3.5 px-5 text-right">Actions</th>
+                <tr className="border-b border-slate-100 text-[11px] font-semibold text-slate-400 uppercase tracking-wider bg-slate-50/50">
+                  <th className="py-3.5 px-6">Project Title</th>
+                  <th className="py-3.5 px-6">Client Name</th>
+                  <th className="py-3.5 px-6">Fee ($)</th>
+                  <th className="py-3.5 px-6">Status</th>
+                  <th className="py-3.5 px-6">Deadline</th>
+                  <th className="py-3.5 px-6 text-right"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
                 {paginatedProjects.map((p) => {
-                  const badgeStyle = getStatusBadge(p.status);
+                  const badge = getStatusBadge(p.status);
                   return (
-                    <tr key={p._id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-4 px-5">
-                        <p className="font-bold text-slate-900 text-sm my-0 leading-tight">
-                          {p.title}
+                    <tr key={p._id} className="hover:bg-slate-50/70 transition-colors">
+                      {/* Project Title */}
+                      <td className="py-4 px-6 font-semibold text-slate-900 text-sm">
+                        {p.title}
+                      </td>
+
+                      {/* Client Name & Company */}
+                      <td className="py-4 px-6">
+                        <p className="font-semibold text-slate-800 text-xs my-0 leading-tight">
+                          {p.client?.name || 'Sarah Chen'}
                         </p>
-                        {p.description && (
-                          <p className="text-[11px] text-slate-400 truncate max-w-xs sm:max-w-md mt-0.5 font-normal">
-                            {p.description}
-                          </p>
-                        )}
+                        <p className="text-[11px] text-slate-400 font-normal mt-0.5 my-0">
+                          {p.client?.company || 'Northwind Studio'}
+                        </p>
                       </td>
-                      <td className="py-4 px-5">
-                        <div className="flex items-center gap-2">
-                          <Building2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                          <div>
-                            <p className="font-semibold text-slate-800">
-                              {p.client?.name || 'Acme Studio'}
-                            </p>
-                            <p className="text-[10px] text-slate-400">
-                              {p.client?.company || 'Client'}
-                            </p>
-                          </div>
-                        </div>
+
+                      {/* Fee ($) */}
+                      <td className="py-4 px-6 font-bold text-slate-800 text-xs">
+                        ${Number(p.fee || 0).toLocaleString()}
                       </td>
-                      <td className="py-4 px-5">
-                        <span className="font-bold text-slate-900 text-sm">
-                          ${Number(p.fee || 0).toLocaleString()}
-                        </span>
-                      </td>
-                      <td className="py-4 px-5">
+
+                      {/* Status */}
+                      <td className="py-4 px-6">
                         <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${badgeStyle.badge}`}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium ${badge.pill}`}
                         >
-                          <span className={`w-1.5 h-1.5 rounded-full ${badgeStyle.dot}`}></span>
-                          {p.status}
+                          <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`}></span>
+                          <span>{badge.label}</span>
                         </span>
                       </td>
-                      <td className="py-4 px-5 text-slate-600">
-                        {p.dueDate ? (
-                          <span className="flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                            {new Date(p.dueDate).toLocaleDateString()}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">Flexible</span>
-                        )}
+
+                      {/* Deadline */}
+                      <td className="py-4 px-6 text-slate-600 text-xs">
+                        {formatDeadline(p.dueDate)}
                       </td>
-                      <td className="py-4 px-5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => handleGenerateInvoicePDF(p)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
-                            title="Generate PDF Invoice"
-                          >
-                            <FileText className="w-4 h-4" />
-                          </button>
+
+                      {/* Actions */}
+                      <td className="py-4 px-6 text-right">
+                        <div className="flex items-center justify-end gap-2.5">
                           <button
                             onClick={() => {
                               setSelectedProject(p);
                               setIsModalOpen(true);
                             }}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-[#5046e5] hover:bg-indigo-50 transition-colors cursor-pointer"
+                            className="text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
                             title="Edit Project"
                           >
                             <Edit3 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => setDeleteConfirmId(p._id)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                            className="text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
                             title="Delete Project"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -778,19 +550,34 @@ const Projects = () => {
           </div>
         )}
 
-        {/* Pagination Controls */}
-        <div className="px-5">
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            totalItems={sortedProjects.length}
-            itemsPerPage={itemsPerPage}
-          />
+        {/* 4. Bottom Pagination: Showing on left, Previous/Next on right */}
+        <div className="py-3 px-6 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <div>
+            Showing <span className="font-semibold text-slate-700">{startItem}</span> to{' '}
+            <span className="font-semibold text-slate-700">{endItem}</span> of{' '}
+            <span className="font-semibold text-slate-700">{filteredProjects.length}</span> projects
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-3.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer font-medium text-xs shadow-2xs"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages || totalPages === 0}
+              className="px-3.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer font-medium text-xs shadow-2xs"
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* 5. Delete Confirmation Modal */}
+      {/* 5. Delete Confirmation Dialog */}
       {deleteConfirmId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
           <div className="bg-white w-full max-w-sm p-6 rounded-2xl border border-slate-100 shadow-xl animate-modal text-center">
@@ -805,14 +592,14 @@ const Projects = () => {
             <div className="mt-6 flex items-center justify-center gap-3">
               <button
                 onClick={() => setDeleteConfirmId(null)}
-                className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDeleteProject(deleteConfirmId)}
                 disabled={deleting}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 flex items-center gap-1.5 shadow-sm cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 flex items-center gap-1.5 shadow-xs cursor-pointer"
               >
                 {deleting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 Confirm Delete
@@ -822,7 +609,7 @@ const Projects = () => {
         </div>
       )}
 
-      {/* 6. Project Form Modal */}
+      {/* 6. Project Modal */}
       <ProjectModal
         isOpen={isModalOpen}
         onClose={() => {
