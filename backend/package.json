@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "node --watch server.js",
+    "dev:nodemon": "node ./node_modules/nodemon/bin/nodemon.js server.js"
   },
   "keywords": [
     "express",

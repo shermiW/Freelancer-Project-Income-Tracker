@@ -169,15 +169,17 @@ const getDashboardStats = async (req, res, next) => {
       Paid: 0,
     };
 
-    // Monthly aggregation for charts (last 6 months)
+    // Monthly aggregation for charts (last 12 months)
     const monthlyIncomeMap = {};
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
     const currentMonth = new Date().getMonth();
-    for (let i = 5; i >= 0; i--) {
+    for (let i = 11; i >= 0; i--) {
       const monthIdx = (currentMonth - i + 12) % 12;
       monthlyIncomeMap[months[monthIdx]] = 0;
     }
+
+    let unpaidProjectsCount = 0;
 
     projects.forEach((p) => {
       if (statusCounts[p.status] !== undefined) {
@@ -195,6 +197,7 @@ const getDashboardStats = async (req, res, next) => {
         }
       } else {
         pendingPayments += p.fee;
+        unpaidProjectsCount += 1;
       }
 
       if (p.status === 'In Progress' || p.status === 'Pending') {
@@ -210,9 +213,11 @@ const getDashboardStats = async (req, res, next) => {
     const statusBreakdown = [
       { name: 'Pending', count: statusCounts.Pending, color: '#f59e0b' },
       { name: 'In Progress', count: statusCounts['In Progress'], color: '#3b82f6' },
-      { name: 'Completed', count: statusCounts.Completed, color: '#8b5cf6' },
+      { name: 'Completed', count: statusCounts.Completed, color: '#10b981' },
       { name: 'Paid', count: statusCounts.Paid, color: '#10b981' },
     ];
+
+    const totalEarned12Months = monthlyIncome.reduce((acc, curr) => acc + curr.income, 0);
 
     res.json({
       totalIncome,
@@ -220,12 +225,15 @@ const getDashboardStats = async (req, res, next) => {
       activeProjects: activeProjectsCount,
       totalProjects: projects.length,
       totalClients: clientsCount,
+      unpaidProjectsCount,
+      totalEarned12Months,
       summary: {
         totalIncome,
         pendingPayments,
         activeProjects: activeProjectsCount,
         totalProjects: projects.length,
         totalClients: clientsCount,
+        unpaidProjectsCount,
       },
       statusBreakdown,
       monthlyIncome,
