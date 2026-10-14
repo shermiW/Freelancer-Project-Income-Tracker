@@ -331,7 +331,7 @@ const Projects = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `Tally_Projects_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `Freelancer_Tracker_Projects_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -413,7 +413,7 @@ const Projects = () => {
             className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#5046e5] hover:bg-[#4338ca] flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Add New Project</span>
+            <span>Add New Project</span>
           </button>
         </div>
       </div>
@@ -474,7 +474,7 @@ const Projects = () => {
                 <tr className="border-b border-slate-100 text-[11px] font-semibold text-slate-400 uppercase tracking-wider bg-slate-50/50">
                   <th className="py-3.5 px-6">Project Title</th>
                   <th className="py-3.5 px-6">Client Name</th>
-                  <th className="py-3.5 px-6">Fee ($)</th>
+                  <th className="py-3.5 px-6">Fee (Rs.)</th>
                   <th className="py-3.5 px-6">Status</th>
                   <th className="py-3.5 px-6">Deadline</th>
                   <th className="py-3.5 px-6 text-right"></th>
@@ -500,9 +500,9 @@ const Projects = () => {
                         </p>
                       </td>
 
-                      {/* Fee ($) */}
+                      {/* Fee (Rs.) */}
                       <td className="py-4 px-6 font-bold text-slate-800 text-xs">
-                        ${Number(p.fee || 0).toLocaleString()}
+                        Rs. {Number(p.fee || 0).toLocaleString()}
                       </td>
 
                       {/* Status */}

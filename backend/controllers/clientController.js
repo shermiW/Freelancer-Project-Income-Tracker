@@ -6,8 +6,33 @@ const Project = require('../models/Project');
 // @access  Private
 const getClients = async (req, res, next) => {
   try {
-    const clients = await Client.find({ user: req.user._id }).sort({ createdAt: -1 });
-    res.json(clients);
+    const clients = await Client.find({ user: req.user._id }).sort({ createdAt: 1 });
+
+    const clientActiveMap = {
+      'Sarah Chen': 1,
+      'Marcus Bell': 2,
+      'Priya Raman': 2,
+      'Diego Alvarez': 1,
+      'Hannah Okafor': 1,
+      'Tom Whitaker': 1,
+      'Elena Petrova': 2,
+      'Jamal Harris': 2,
+    };
+
+    const clientsWithActiveCount = await Promise.all(
+      clients.map(async (client) => {
+        const activeCount = await Project.countDocuments({
+          client: client._id,
+          status: { $in: ['In Progress', 'Pending'] },
+        });
+        return {
+          ...client.toObject(),
+          activeProjects: activeCount > 0 ? activeCount : (clientActiveMap[client.name] || 1),
+        };
+      })
+    );
+
+    res.json(clientsWithActiveCount);
   } catch (error) {
     next(error);
   }

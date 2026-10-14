@@ -40,9 +40,9 @@ const Navbar = () => {
         </button>
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-[#5347eb] flex items-center justify-center text-white font-bold text-sm">
-            T
+            F
           </div>
-          <span className="font-bold text-slate-900 text-lg">Tally</span>
+          <span className="font-bold text-slate-900 text-lg">Freelancer Tracker</span>
         </div>
       </div>
 
@@ -116,7 +116,7 @@ const Navbar = () => {
               className="w-full py-2.5 px-4 rounded-xl bg-[#5046e5] text-white text-sm font-semibold flex items-center justify-center gap-2"
             >
               <Plus className="w-4 h-4" />
-              <span>+ New Project</span>
+              <span>New Project</span>
             </button>
           </div>
         </div>

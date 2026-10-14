@@ -23,13 +23,13 @@ const Sidebar = () => {
   return (
     <aside className="w-64 bg-white border-r border-slate-100 flex flex-col justify-between hidden md:flex min-h-screen sticky top-0 z-30 select-none">
       <div>
-        {/* Brand Header: Purple 'T' Badge + 'Tally' */}
+        {/* Brand Header: Purple 'F' Badge + 'Freelancer Tracker' */}
         <div className="p-6 flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-[#5347eb] flex items-center justify-center text-white font-bold text-base shadow-sm shadow-indigo-500/20">
-            T
+            F
           </div>
           <span className="text-xl font-bold text-slate-900 tracking-tight">
-            Tally
+            Freelancer Tracker
           </span>
         </div>
 
@@ -82,7 +82,7 @@ const Sidebar = () => {
           className="w-full py-3 px-4 rounded-xl bg-[#5046e5] hover:bg-[#4338ca] text-white text-sm font-semibold flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
         >
           <Plus className="w-4 h-4" />
-          <span>+ New Project</span>
+          <span>New Project</span>
         </button>
       </div>
     </aside>

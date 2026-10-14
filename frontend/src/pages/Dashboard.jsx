@@ -112,8 +112,13 @@ const Dashboard = () => {
     ? stats.totalEarned12Months
     : 75750;
 
-  // Monthly income dataset
-  const monthlyEarningsData = hasDbProjects && stats.monthlyIncome?.length === 12
+  // Monthly income dataset - ensure positive income entries so bars render
+  const hasValidMonthlyIncome =
+    hasDbProjects &&
+    Array.isArray(stats?.monthlyIncome) &&
+    stats.monthlyIncome.some((m) => m.income > 0);
+
+  const monthlyEarningsData = hasValidMonthlyIncome
     ? stats.monthlyIncome
     : defaultMonthlyEarnings;
 
@@ -211,7 +216,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard
           title="Total Received Income"
-          value={`$${totalReceivedIncome.toLocaleString()}`}
+          value={`Rs. ${totalReceivedIncome.toLocaleString()}`}
           icon={Wallet}
           color="emerald"
           trend="↗ +12.5%"
@@ -219,7 +224,7 @@ const Dashboard = () => {
         />
         <StatCard
           title="Pending Payments"
-          value={`$${pendingPayments.toLocaleString()}`}
+          value={`Rs. ${pendingPayments.toLocaleString()}`}
           subtitle={`Across ${unpaidProjectsCount} unpaid projects`}
           icon={Clock}
           color="amber"
@@ -249,7 +254,7 @@ const Dashboard = () => {
             </div>
             <div className="text-right">
               <span className="text-sm font-bold text-slate-800">
-                ${totalEarned12Months.toLocaleString()}
+                Rs. {totalEarned12Months.toLocaleString()}
               </span>
               <span className="text-xs text-slate-400 font-medium ml-1">
                 earned
@@ -284,13 +289,13 @@ const Dashboard = () => {
                   tick={{ fontSize: 11, fill: '#94a3b8' }}
                   ticks={[0, 2500, 5000, 7500, 10000]}
                   tickFormatter={(val) => {
-                    if (val === 0) return '$0k';
-                    return `$${(val / 1000).toFixed(1).replace('.0', '')}k`;
+                    if (val === 0) return 'Rs. 0';
+                    return `Rs. ${(val / 1000).toFixed(1).replace('.0', '')}k`;
                   }}
                 />
                 <Tooltip
                   cursor={{ fill: '#f8fafc' }}
-                  formatter={(val) => [`$${Number(val).toLocaleString()}`, 'Income']}
+                  formatter={(val) => [`Rs. ${Number(val).toLocaleString()}`, 'Income']}
                   contentStyle={{
                     backgroundColor: '#ffffff',
                     border: '1px solid #e2e8f0',
@@ -302,12 +307,12 @@ const Dashboard = () => {
                 />
                 <Bar dataKey="income" radius={[6, 6, 0, 0]}>
                   {monthlyEarningsData.map((entry, index) => {
-                    // Highlight the final month in dark emerald green, earlier months in mint teal
+                    // Match reference design: light emerald green for earlier months, deep green for current month
                     const isLast = index === monthlyEarningsData.length - 1;
                     return (
                       <Cell
                         key={`bar-${index}`}
-                        fill={isLast ? '#047857' : '#5eead4'}
+                        fill={isLast ? '#059669' : '#34d399'}
                       />
                     );
                   })}
@@ -445,7 +450,7 @@ const Dashboard = () => {
                     {p.client?.company ? ` • ${p.client.company}` : ''}
                   </td>
                   <td className="py-3.5 px-3 font-bold text-slate-800">
-                    ${p.fee?.toLocaleString()}
+                    Rs. {p.fee?.toLocaleString()}
                   </td>
                   <td className="py-3.5 px-3">
                     <span

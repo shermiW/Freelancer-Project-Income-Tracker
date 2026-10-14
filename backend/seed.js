@@ -10,22 +10,21 @@ const Project = require('./models/Project');
 
 const seedData = async () => {
   try {
-    const mongoUri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/freelancer_tracker';
-    console.log(`Connecting to MongoDB at: ${mongoUri}`);
-    await mongoose.connect(mongoUri);
-    console.log('✅ Connected to MongoDB.');
+    if (mongoose.connection.readyState !== 1) {
+      const mongoUri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/freelancer_tracker';
+      console.log(`Connecting to MongoDB at: ${mongoUri}`);
+      await mongoose.connect(mongoUri);
+      console.log('✅ Connected to MongoDB.');
+    }
 
     // Remove existing demo user if present
     await User.deleteMany({ email: 'freelancer@demo.com' });
 
-    // Create Demo User (Alex Morgan)
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash('password123', salt);
-
+    // Create Demo User (Alex Morgan) - User pre('save') hook will hash this password
     const user = await User.create({
       name: 'Alex Morgan',
       email: 'freelancer@demo.com',
-      password: hashedPassword,
+      password: 'password123',
       companyName: 'Product Designer',
     });
 
@@ -35,14 +34,14 @@ const seedData = async () => {
     await Client.deleteMany({ user: user._id });
     await Project.deleteMany({ user: user._id });
 
-    // 5 Clients matching the exact Projects view screenshot
+    // 8 Clients matching the exact Clients directory view screenshot
     const clientsData = [
       {
         user: user._id,
         name: 'Sarah Chen',
-        email: 'sarah@northwindstudio.com',
+        email: 'sarah@northwind.studio',
         company: 'Northwind Studio',
-        phone: '+1 (555) 234-5678',
+        phone: '+1 (415) 555-0142',
         status: 'Active',
       },
       {
@@ -50,37 +49,61 @@ const seedData = async () => {
         name: 'Marcus Bell',
         email: 'marcus@lumencoffee.com',
         company: 'Lumen Coffee Co.',
-        phone: '+1 (555) 876-5432',
+        phone: '+1 (503) 555-0198',
         status: 'Active',
       },
       {
         user: user._id,
         name: 'Priya Raman',
-        email: 'priya@fieldnotehealth.com',
+        email: 'priya.raman@fieldnote.health',
         company: 'Fieldnote Health',
-        phone: '+1 (555) 432-1098',
+        phone: '+1 (617) 555-0117',
         status: 'Active',
       },
       {
         user: user._id,
         name: 'Diego Alvarez',
-        email: 'diego@atlasfreight.com',
+        email: 'diego@atlasfreight.io',
         company: 'Atlas Freight',
-        phone: '+1 (555) 321-9876',
+        phone: '+1 (312) 555-0163',
         status: 'Active',
       },
       {
         user: user._id,
         name: 'Hannah Okafor',
-        email: 'hannah@brightsidelearning.com',
+        email: 'hannah@brightside.edu',
         company: 'Brightside Learning',
-        phone: '+1 (555) 654-3210',
+        phone: '+1 (206) 555-0129',
+        status: 'Active',
+      },
+      {
+        user: user._id,
+        name: 'Tom Whitaker',
+        email: 'tom@whitakerlaw.com',
+        company: 'Whitaker & Co. Law',
+        phone: '+1 (212) 555-0184',
+        status: 'Active',
+      },
+      {
+        user: user._id,
+        name: 'Elena Petrova',
+        email: 'elena@orbitfin.co',
+        company: 'Orbit Fintech',
+        phone: '+1 (646) 555-0151',
+        status: 'Active',
+      },
+      {
+        user: user._id,
+        name: 'Jamal Harris',
+        email: 'jamal@peakoutdoors.com',
+        company: 'Peak Outdoors',
+        phone: '+1 (720) 555-0176',
         status: 'Active',
       },
     ];
 
     const createdClients = await Client.insertMany(clientsData);
-    const [c1, c2, c3, c4, c5] = createdClients;
+    const [c1, c2, c3, c4, c5, c6, c7, c8] = createdClients;
     console.log(`✅ Created ${createdClients.length} Sample Clients`);
 
     // 24 Projects total matching the Tally Projects & Dashboard metrics
@@ -334,11 +357,20 @@ const seedData = async () => {
     console.log('Login Password:      password123');
     console.log('=============================================\n');
 
-    process.exit(0);
+    if (require.main === module) {
+      process.exit(0);
+    }
   } catch (err) {
     console.error('❌ Seeding Error:', err.message);
-    process.exit(1);
+    if (require.main === module) {
+      process.exit(1);
+    }
+    throw err;
   }
 };
 
-seedData();
+if (require.main === module) {
+  seedData();
+}
+
+module.exports = seedData;
